@@ -1,3 +1,29 @@
+enum ColorEnum {
+    red
+    green
+    blue
+    yellow
+}
+
+class Participant {
+    [String] $name
+    [int] $age
+    [string] $Color
+    [int] $id
+
+    participant([string]$name, [int]$age,
+    [ColorEnum]$Color, [int]$id) {
+        $this.name = $name
+        $this.age = $age
+        $this.Color = $Color
+        $this.id = $id
+
+    }
+    
+    [string] ToString () {
+        Return '{0},{1},{2},{3}' -f $this.Name, $this.Age, $this.Color, $this.Id
+    }
+}
 function GetUserData {
     $MyUsers = . "$PSScriptRoot\getuser.ps1"
 
@@ -32,7 +58,7 @@ Function Get-CourseUser {
 function Add-CourseUser {
     [CmdletBinding()]
     param (
-        [string]$DatabaseFile = "$PSScriptRoot\MyLabFile.csv",
+        [string]$DatabaseFile = "C:\Temp\powershelltraining\PowershellTraining\MyLabFile.csv",
 
         [Parameter(Mandatory)]
         [string]$Name,
@@ -41,33 +67,27 @@ function Add-CourseUser {
         [int]$Age,
 
         [Parameter(Mandatory)]
-        [ValidateSet('red','green','blue','yellow')]
-        [string]$Color,
+        [ColorEnum]$Color,
 
-        [string]$UserID
+        $id = (Get-Random -Minimum 10 -Maximum 100000)
     )
 
-    if (-not $UserID) {
-        $UserID = [guid]::NewGuid().ToString()
+    if (-not $id) {
+        $id = [guid]::NewGuid().ToString()
     }
 
     
-    $newUser = [PSCustomObject]@{
-        Id    = $UserID
-        Name  = $Name
-        Age   = $Age
-        Color = $Color
-    }
+ $MyNewUser = [Participant]::new($Name, $Age, $Color, $UserId)
+    $MyCsvUser = $MyNewUser.ToString() 
+    
+    $NewCSv = Get-Content $DatabaseFile -Raw
+    $NewCSv += $MyCsvUser
 
-    if (-not (Test-Path $DatabaseFile)) {
-        $newUser | Export-Csv -Path $DatabaseFile -NoTypeInformation
-    }
-    else {
-        $newUser | Export-Csv -Path $DatabaseFile -Append -NoTypeInformation
-    }
-
-    return $newUser
+    Set-Content -Value $NewCSv -Path $DatabaseFile
 }
+
+
+
 
 function Remove-CourseUser {
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
