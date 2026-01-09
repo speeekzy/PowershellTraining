@@ -12,7 +12,7 @@ class Participant {
     [int] $id
 
     participant([string]$name, [int]$age,
-    [ColorEnum]$Color, [int]$id) {
+        [ColorEnum]$Color, [int]$id) {
         $this.name = $name
         $this.age = $age
         $this.Color = $Color
@@ -25,7 +25,19 @@ class Participant {
     }
 }
 function GetUserData {
-    $MyUsers = . "$PSScriptRoot\getuser.ps1"
+    [CmdletBinding()]
+    param(
+        $name
+    )
+    try {
+        $MyUsers = Invoke-RestMethod http://localhost:666/api -erroraction stop
+        $MyUsers = $MyUsers.result
+    }
+    catch {
+        Write-Error "Databasen är tom!? Använd rätt URL när du hämtar data förfan" 
+    }
+ 
+
 
     foreach ($user in $MyUsers) {
         [PSCustomObject]@{
@@ -44,7 +56,7 @@ Function Get-CourseUser {
         [int]$OlderThan = 65
     )
     $users = GetUserData
-        if ($PSBoundParameters.ContainsKey('Name')) {
+    if ($PSBoundParameters.ContainsKey('Name')) {
         $users = $users | Where-Object {
             $_.Name -eq $Name
         }
@@ -61,6 +73,7 @@ function Add-CourseUser {
         [string]$DatabaseFile = "C:\Temp\powershelltraining\PowershellTraining\MyLabFile.csv",
 
         [Parameter(Mandatory)]
+        [ValidatePattern('^[A-Za-z]+ [A-Za-z]+$', ErrorMessage = 'Name is in an incorrect format')]
         [string]$Name,
 
         [Parameter(Mandatory)]
@@ -77,11 +90,12 @@ function Add-CourseUser {
     }
 
     
- $MyNewUser = [Participant]::new($Name, $Age, $Color, $UserId)
+    $MyNewUser = [Participant]::new($Name, $Age, $Color, $UserId)
     $MyCsvUser = $MyNewUser.ToString() 
-    
+ 
     $NewCSv = Get-Content $DatabaseFile -Raw
     $NewCSv += $MyCsvUser
+ 
 
     Set-Content -Value $NewCSv -Path $DatabaseFile
 }
@@ -124,4 +138,32 @@ function Remove-CourseUser {
     else {
         Write-Output "Did not remove user $($RemoveUser.Name)"
     }
+    function Confirm-CourseID {
+        param ()
+
+        $SearchName = (Read-Host "What user should we search for?").Trim()
+
+        $AllUsers = GetUserData | Where-Object {
+            $_.Name -and $_.Name.Trim() -eq $SearchName
+        }
+
+        if (-not $AllUsers) {
+            Write-Output "No user found with name: $SearchName"
+            return
+        }
+
+        foreach ($User in $AllUsers) {
+            if ([string]::IsNullOrWhiteSpace($User.Id)) {
+                Write-Output "User $($User.Name) has missing id"
+            }
+            elseif ($User.Id -notmatch '^\d+$') {
+                Write-Output "User $($User.Name) has mismatching id: $($User.Id)"
+            }
+            else {
+                Write-Output "User $($User.Name) has valid id: $($User.Id)"
+            }
+        }
+    }
+
+
 }
